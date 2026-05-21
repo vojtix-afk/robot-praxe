@@ -14,3 +14,6 @@ C = route C
 
 ## Run
 python main.py
+
+## Day 4
+understanding code and his syntax
