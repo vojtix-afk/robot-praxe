@@ -16,4 +16,5 @@ C = route C
 python main.py
 
 ## Day 4
-understanding code and his syntax
+understanding code and his syntax - done
+Working file from our folder - done

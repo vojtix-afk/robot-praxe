@@ -48,6 +48,7 @@ def agent(user_input):
     # Neznámý vstup
     print("[AGENT] Unknown input -> stopping robot")
 
+
     return ["stop"]
 
 
