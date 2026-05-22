@@ -15,6 +15,6 @@ C = route C
 ## Run
 python main.py
 
-## Day 4
-understanding code and his syntax - done
-Working file from our folder - done
+## Day 5
+Learning how to build PC - done
+Choosing correct components for pc - done
