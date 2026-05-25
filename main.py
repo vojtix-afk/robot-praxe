@@ -1,148 +1,155 @@
 import time
-
-# =========================
-# UNITREE SDK IMPORTS
-# =========================
+import cv2
+import numpy as np
 
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 from unitree_sdk2py.go2.sport.sport_client import SportClient
-
-
-# =========================
-# INITIALIZATION
-# =========================
+from unitree_sdk2py.go2.video.video_client import VideoClient
 
 print("Initializing robot connection...")
-
-# Network interface
-# Možná bude potřeba změnit "eth0"
-# podle vašeho robota (např. wlan0)
 
 ChannelFactoryInitialize(0, "eth0")
 
 client = SportClient()
-
 client.SetTimeout(10.0)
-
 client.Init()
 
-print("Robot connection ready")
+# 📸 kamera init (DOPLNĚNO)
+video_client = VideoClient()
+video_client.SetTimeout(1.0)
+video_client.Init()
 
+print("Robot connection ready")
 
 # =========================
 # ROUTES
 # =========================
-# Předdefinované cesty robota
 
 ROUTES = {
-
-    "A": [
-        "forward",
-        "forward",
-        "left",
-        "forward"
-    ],
-
-    "B": [
-        "backward",
-        "right",
-        "forward"
-    ],
-
-    "C": [
-        "left",
-        "forward",
-        "right"
-    ]
+    "A": ["forward"],
+    "B": ["backward"],
+    "C": ["left"],
+    "D": ["right"]
 }
 
+# =========================
+# CAMERA FUNCTION (DOPLNĚNO)
+# =========================
+
+def take_picture():
+    print("[CAMERA] Taking picture...")
+
+    code, data = video_client.GetImageSample()
+
+    if code != 0:
+        print("❌ Camera error:", code)
+        return
+
+    if not data:
+        print("❌ No data")
+        return
+
+    try:
+        img_bytes = bytes(data)
+
+        img_array = np.frombuffer(img_bytes, dtype=np.uint8)
+        img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+
+        if img is None:
+            print("❌ Decode failed")
+            return
+
+        filename = "image.jpg"
+        cv2.imwrite(filename, img)
+
+        print("✅ Saved image.jpg")
+        print("scp unitree@ROBOT_IP:~/image.jpg .")
+
+    except Exception as e:
+        print("❌ Error:", e)
 
 # =========================
 # AGENT
 # =========================
-# Rozhoduje kterou trasu vykonat
 
 def agent(user_input):
-
     user_input = user_input.upper().strip()
 
-    # Nouzové zastavení
     if user_input == "STOP":
         return ["stop"]
 
-    # Pokud existuje trasa
+    # 📸 PŘIDÁNO PICTURE
+    if user_input == "PICTURE":
+        take_picture()
+        return []
+
     if user_input in ROUTES:
         return ROUTES[user_input]
 
-    # Neznámý vstup
     print("[AGENT] Unknown route")
-
     return ["stop"]
 
-
 # =========================
-# ROBOT MOVEMENT FUNCTIONS
+# ROBOT CONTROL (FIXED)
 # =========================
 
-def forward():
-
+def forward(seconds=3):
     print("[ROBOT] MOVE FORWARD")
 
-    # vx, vy, vyaw
-    client.Move(0.3, 0.0, 0.0)
+    t0 = time.time()
 
-    time.sleep(2)
+    while time.time() - t0 < seconds:
+        client.Move(0.6, 0.0, 0.0)
+        time.sleep(0.05)
 
     client.StopMove()
 
 
-def backward():
-
+def backward(seconds=2):
     print("[ROBOT] MOVE BACKWARD")
 
-    client.Move(-0.3, 0.0, 0.0)
+    t0 = time.time()
 
-    time.sleep(2)
+    while time.time() - t0 < seconds:
+        client.Move(-0.6, 0.0, 0.0)
+        time.sleep(0.05)
 
     client.StopMove()
 
 
-def left():
-
+def left(seconds=3.5):
     print("[ROBOT] TURN LEFT")
 
-    client.Move(0.0, 0.0, 0.5)
+    t0 = time.time()
 
-    time.sleep(1)
+    while time.time() - t0 < seconds:
+        client.Move(0.0, 0.0, 0.6)
+        time.sleep(0.05)
 
     client.StopMove()
 
 
-def right():
-
+def right(seconds=3.5):
     print("[ROBOT] TURN RIGHT")
 
-    client.Move(0.0, 0.0, -0.5)
+    t0 = time.time()
 
-    time.sleep(1)
+    while time.time() - t0 < seconds:
+        client.Move(0.0, 0.0, -0.6)
+        time.sleep(0.05)
 
     client.StopMove()
 
 
 def stop():
-
     print("[ROBOT] STOP")
-
     client.StopMove()
-
 
 # =========================
 # EXECUTOR
 # =========================
-# Vykoná jednotlivé kroky trasy
 
 def execute(route):
-
     print("[EXECUTOR] Starting route")
 
     for step in route:
@@ -165,39 +172,28 @@ def execute(route):
         else:
             print("[EXECUTOR] Unknown action:", step)
 
-        # Pauza mezi kroky
-        time.sleep(1)
+        time.sleep(0.5)
 
     print("[EXECUTOR] Route complete")
 
-
 # =========================
-# MAIN LOOP
+# MAIN
 # =========================
 
 def main():
-
-    print()
-    print("Robot Dog System Ready")
-    print()
+    print("\nRobot Dog System Ready\n")
 
     print("Available routes:")
-
-    for route_name in ROUTES:
-        print("-", route_name)
-
+    for r in ROUTES:
+        print("-", r)
     print("- STOP")
-    print()
+    print("- PICTURE\n")
 
-    # Postavení robota
     print("Standing up robot...")
-
     client.StandUp()
-
     time.sleep(2)
 
     while True:
-
         user_input = input("> ")
 
         route = agent(user_input)
@@ -208,10 +204,6 @@ def main():
 
         print("\n--- DONE ---\n")
 
-
-# =========================
-# START PROGRAMU
-# =========================
 
 if __name__ == "__main__":
     main()
