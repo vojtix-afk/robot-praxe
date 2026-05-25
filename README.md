@@ -16,5 +16,5 @@ C = route C
 python main.py
 
 ## Day 6
-working code with directions - done
-Routes with directions - processed
+working code with directions - done ;
+ Multi input - done
