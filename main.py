@@ -1,91 +1,149 @@
-"""
-Robot Dog Project
-
-Simple control system for Unitree Go2.
-
-Features:
-- predefined routes
-- simple agent logic
-- forward / backward / left / right movement
-- prepared for future Go2 SDK integration
-"""
-
 import time
 
+# =========================
+# UNITREE SDK IMPORTS
+# =========================
+
+from unitree_sdk2py.core.channel import ChannelFactoryInitialize
+from unitree_sdk2py.go2.sport.sport_client import SportClient
+
 
 # =========================
-# 1. ROUTES (MAPA CHOVÁNÍ)
+# INITIALIZATION
 # =========================
-# Každá trasa představuje sérii kroků,
-# které robot vykoná postupně.
+
+print("Initializing robot connection...")
+
+# Network interface
+# Možná bude potřeba změnit "eth0"
+# podle vašeho robota (např. wlan0)
+
+ChannelFactoryInitialize(0, "eth0")
+
+client = SportClient()
+
+client.SetTimeout(10.0)
+
+client.Init()
+
+print("Robot connection ready")
+
+
+# =========================
+# ROUTES
+# =========================
+# Předdefinované cesty robota
 
 ROUTES = {
-    "HOME": ["forward", "forward", "left", "forward"],
 
-    "TABLE": ["backward", "right", "forward", "forward"],
+    "A": [
+        "forward",
+        "forward",
+        "left",
+        "forward"
+    ],
 
-    "DOOR": ["left", "backward", "right", "forward"]
+    "B": [
+        "backward",
+        "right",
+        "forward"
+    ],
+
+    "C": [
+        "left",
+        "forward",
+        "right"
+    ]
 }
 
 
 # =========================
-# 2. AGENT (ROZHODOVÁNÍ)
+# AGENT
 # =========================
-# Převádí vstup uživatele na trasu.
+# Rozhoduje kterou trasu vykonat
 
 def agent(user_input):
 
     user_input = user_input.upper().strip()
 
-    # Nouzový stop
+    # Nouzové zastavení
     if user_input == "STOP":
         return ["stop"]
 
-    # Pokud trasa existuje
+    # Pokud existuje trasa
     if user_input in ROUTES:
         return ROUTES[user_input]
 
     # Neznámý vstup
-    print("[AGENT] Unknown input -> stopping robot")
-
+    print("[AGENT] Unknown route")
 
     return ["stop"]
 
 
 # =========================
-# 3. ROBOT CONTROLLER
+# ROBOT MOVEMENT FUNCTIONS
 # =========================
-# Zatím pouze simulace.
-# Později se sem napojí Go2 SDK.
 
 def forward():
+
     print("[ROBOT] MOVE FORWARD")
+
+    # vx, vy, vyaw
+    client.Move(0.3, 0.0, 0.0)
+
+    time.sleep(2)
+
+    client.StopMove()
 
 
 def backward():
+
     print("[ROBOT] MOVE BACKWARD")
+
+    client.Move(-0.3, 0.0, 0.0)
+
+    time.sleep(2)
+
+    client.StopMove()
 
 
 def left():
+
     print("[ROBOT] TURN LEFT")
+
+    client.Move(0.0, 0.0, 0.5)
+
+    time.sleep(1)
+
+    client.StopMove()
 
 
 def right():
+
     print("[ROBOT] TURN RIGHT")
+
+    client.Move(0.0, 0.0, -0.5)
+
+    time.sleep(1)
+
+    client.StopMove()
 
 
 def stop():
+
     print("[ROBOT] STOP")
 
+    client.StopMove()
+
 
 # =========================
-# 4. EXECUTOR
+# EXECUTOR
 # =========================
-# Vykonává plán krok po kroku.
+# Vykoná jednotlivé kroky trasy
 
 def execute(route):
 
-    print("[EXECUTOR] Starting route execution")
+    print("[EXECUTOR] Starting route")
 
     for step in route:
 
@@ -105,20 +163,21 @@ def execute(route):
             stop()
 
         else:
-            print(f"[EXECUTOR] Unknown action: {step}")
+            print("[EXECUTOR] Unknown action:", step)
 
-        # Pauza mezi příkazy
+        # Pauza mezi kroky
         time.sleep(1)
 
-    print("[EXECUTOR] Route finished")
+    print("[EXECUTOR] Route complete")
 
 
 # =========================
-# 5. MAIN LOOP
+# MAIN LOOP
 # =========================
 
 def main():
 
+    print()
     print("Robot Dog System Ready")
     print()
 
@@ -129,6 +188,13 @@ def main():
 
     print("- STOP")
     print()
+
+    # Postavení robota
+    print("Standing up robot...")
+
+    client.StandUp()
+
+    time.sleep(2)
 
     while True:
 
@@ -144,7 +210,7 @@ def main():
 
 
 # =========================
-# 6. START PROGRAMU
+# START PROGRAMU
 # =========================
 
 if __name__ == "__main__":
