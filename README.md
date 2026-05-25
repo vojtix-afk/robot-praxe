@@ -15,6 +15,6 @@ C = route C
 ## Run
 python main.py
 
-## Day 5
-Learning how to build PC - done
-Choosing correct components for pc - done
+## Day 6
+working code with directions - done
+Routes with directions - processed
