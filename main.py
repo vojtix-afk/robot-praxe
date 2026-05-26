@@ -1,10 +1,11 @@
-import time
+iimport time
 import cv2
 import numpy as np
 
-from unitree_sdk2py.core.channel import ChannelFactoryInitialize
+from unitree_sdk2py.core.channel import ChannelFactoryInitialize, ChannelSubscriber
 from unitree_sdk2py.go2.sport.sport_client import SportClient
 from unitree_sdk2py.go2.video.video_client import VideoClient
+from unitree_sdk2py.idl.geometry_msgs.msg.dds_ import PointStamped_
 
 print("Initializing robot connection...")
 
@@ -14,10 +15,24 @@ client = SportClient()
 client.SetTimeout(10.0)
 client.Init()
 
-# 📸 kamera init (DOPLNĚNO)
+# 📸 kamera init
 video_client = VideoClient()
 video_client.SetTimeout(1.0)
 video_client.Init()
+
+# =========================
+# LIDAR OBSTACLE DETECTION
+# =========================
+obstacle_distance_front = float('inf')
+
+def lidar_range_handler(msg: PointStamped_):
+    """Callback ukládající vzdálenost překážky z LiDARu (bez výpisů)"""
+    global obstacle_distance_front
+    obstacle_distance_front = msg.point.x
+
+# Inicializace odběratele DDS tématu
+lidar_sub = ChannelSubscriber("rt/utlidar/range_info", PointStamped_)
+lidar_sub.Init(lidar_range_handler, 10)
 
 print("Robot connection ready")
 
@@ -33,7 +48,7 @@ ROUTES = {
 }
 
 # =========================
-# CAMERA FUNCTION (DOPLNĚNO)
+# CAMERA FUNCTION
 # =========================
 
 def take_picture():
@@ -78,7 +93,6 @@ def agent(user_input):
     if user_input == "STOP":
         return ["stop"]
 
-    # 📸 PŘIDÁNO PICTURE
     if user_input == "PICTURE":
         take_picture()
         return []
@@ -90,15 +104,22 @@ def agent(user_input):
     return ["stop"]
 
 # =========================
-# ROBOT CONTROL (FIXED)
+# ROBOT CONTROL
 # =========================
 
 def forward(seconds=3):
+    global obstacle_distance_front
     print("[ROBOT] MOVE FORWARD")
 
     t0 = time.time()
 
     while time.time() - t0 < seconds:
+        # Změna limitu: Jelikož téma range_info pod 1.4m nečte, 
+        # zastavíme robota hned, jakmile se přiblíží na tuto minimální softwarovou hranici.
+        if 0.0 < obstacle_distance_front <= 0.50:
+            print(f"🛑 [LIDAR] Detekována překážka v limitní zóně ({obstacle_distance_front:.2f} m). Zastavuji!")
+            break
+
         client.Move(0.6, 0.0, 0.0)
         time.sleep(0.05)
 
