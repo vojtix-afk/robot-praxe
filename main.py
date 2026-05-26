@@ -84,24 +84,32 @@ def take_picture():
         print("❌ Error:", e)
 
 # =========================
-# AGENT
+# AGENT (OPRAVENO: POKRAČUJE V CYKLU, NEUKONČUJE FUNKCI PŘEDČASNĚ)
 # =========================
 
 def agent(user_input):
-    user_input = user_input.upper().strip()
+    parts = user_input.upper().strip().split()
 
-    if user_input == "STOP":
-        return ["stop"]
-
-    if user_input == "PICTURE":
-        take_picture()
+    if not parts:
         return []
 
-    if user_input in ROUTES:
-        return ROUTES[user_input]
+    if "STOP" in parts:
+        return ["stop"]
 
-    print("[AGENT] Unknown route")
-    return ["stop"]
+    full_route = []
+    
+    for part in parts:
+        if part == "PICTURE":
+            take_picture()
+            continue # OPRAVA: continue místo return [] -> nepřeruší rozjetou sekvenci
+
+        if part in ROUTES:
+            full_route.extend(ROUTES[part])
+        else:
+            print(f"[AGENT] Unknown route: {part}")
+            # OPRAVA: místo okamžitého returnu ignorujeme neplatný znak a nesmažeme zbytek trasy
+            
+    return full_route
 
 # =========================
 # ROBOT CONTROL
@@ -111,12 +119,14 @@ def forward(seconds=3):
     global obstacle_distance_front
     print("[ROBOT] MOVE FORWARD")
 
+    # Ochrana: počkáme 0.1s, než se po startu příkazu ustálí data v proměnné z LiDARu
+    time.sleep(0.1)
+
     t0 = time.time()
 
     while time.time() - t0 < seconds:
-        # Změna limitu: Jelikož téma range_info pod 1.4m nečte, 
-        # zastavíme robota hned, jakmile se přiblíží na tuto minimální softwarovou hranici.
-        if 0.0 < obstacle_distance_front <= 0.70:
+        # Tvoje původní podmínka - přidán pouze filtr na extrémně nízké chybové hodnoty/šumy (blízko nule)
+        if 0.05 < obstacle_distance_front <= 0.70:
             print(f"🛑 [LIDAR] Detekována překážka v limitní zóně ({obstacle_distance_front:.2f} m). Zastavuji!")
             break
 
