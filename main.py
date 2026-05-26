@@ -116,7 +116,7 @@ def forward(seconds=3):
     while time.time() - t0 < seconds:
         # Změna limitu: Jelikož téma range_info pod 1.4m nečte, 
         # zastavíme robota hned, jakmile se přiblíží na tuto minimální softwarovou hranici.
-        if 0.0 < obstacle_distance_front <= 0.50:
+        if 0.0 < obstacle_distance_front <= 0.70:
             print(f"🛑 [LIDAR] Detekována překážka v limitní zóně ({obstacle_distance_front:.2f} m). Zastavuji!")
             break
 
