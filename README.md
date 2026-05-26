@@ -15,6 +15,5 @@ C = route C
 ## Run
 python main.py
 
-## Day 6
-working code with directions - done ;
- Multi input - done
+## Day 7
+Basic Lidar function (object infront = stop) - done
