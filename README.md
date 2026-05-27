@@ -15,5 +15,6 @@ C = route C
 ## Run
 python main.py
 
-## Day 7
-Basic Lidar function (object infront = stop) - done
+## Day 8
+After detecting object -> take a foto - done
+Stand up, lay down commands - done
