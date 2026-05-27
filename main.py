@@ -128,6 +128,7 @@ def forward(seconds=3):
         # Tvoje původní podmínka - přidán pouze filtr na extrémně nízké chybové hodnoty/šumy (blízko nule)
         if 0.05 < obstacle_distance_front <= 0.70:
             print(f"🛑 [LIDAR] Detekována překážka v limitní zóně ({obstacle_distance_front:.2f} m). Zastavuji!")
+            take_picture()
             break
 
         client.Move(0.6, 0.0, 0.0)
