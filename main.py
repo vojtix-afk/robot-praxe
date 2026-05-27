@@ -44,7 +44,9 @@ ROUTES = {
     "B": ["backward"],
     "C": ["left"],
     "D": ["right"],
-    "SPIN": ["spin"]
+    "SPIN": ["spin"],
+    "LIE": ["lie"],
+    "STAND": ["stand"]
 }
 
 # =========================
@@ -100,10 +102,9 @@ def agent(user_input):
     return route
 
 # =========================
-# SAFE MOVE CORE
+# SAFE MOVE CORE (BEZ ZMĚN)
 # =========================
 def move(vx, vy, vyaw, duration):
-    """Stabilní 50Hz řízení pohybu"""
     t0 = time.time()
 
     while time.time() - t0 < duration:
@@ -113,7 +114,7 @@ def move(vx, vy, vyaw, duration):
     client.StopMove()
 
 # =========================
-# MOVES
+# MOVES (BEZ ZMĚN SEKUND)
 # =========================
 def forward(seconds=3):
     print("[ROBOT] FORWARD")
@@ -155,7 +156,31 @@ def spin(seconds=7.5):
     print("[ROBOT] SPIN")
     move(0.0, 0.0, 1, seconds)
 
+# =========================
+# POSTURES (NEW)
+# =========================
+def lie():
+    print("[ROBOT] LIE DOWN")
 
+    try:
+        client.StopMove()
+        time.sleep(0.2)
+        client.StandDown()
+    except Exception as e:
+        print("❌ StandDown (lie) error:", e)
+
+
+def stand():
+    print("[ROBOT] STAND")
+
+    try:
+        client.StandUp()
+    except Exception as e:
+        print("❌ StandUp error:", e)
+
+# =========================
+# STOP
+# =========================
 def stop():
     print("[ROBOT] STOP")
     client.StopMove()
@@ -168,7 +193,6 @@ def execute(route):
 
     for step in route:
 
-        # krátké "prime" aby SDK nezahodilo první Move
         client.Move(0.0, 0.0, 0.0)
         time.sleep(0.05)
         client.StopMove()
@@ -184,6 +208,10 @@ def execute(route):
             right()
         elif step == "spin":
             spin()
+        elif step == "lie":
+            lie()
+        elif step == "stand":
+            stand()
         elif step == "stop":
             stop()
 
@@ -192,7 +220,7 @@ def execute(route):
     print("[EXECUTOR] Route complete")
 
 # =========================
-# WARMUP (JEDNORÁZOVÝ FIX)
+# WARMUP (BEZ ZMĚN)
 # =========================
 def warmup():
     print("Warming up control channel...")
