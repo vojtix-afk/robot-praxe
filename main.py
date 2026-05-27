@@ -41,10 +41,10 @@ print("Robot connection ready")
 # =========================
 
 ROUTES = {
-    "A": ["forward"],
-    "B": ["backward"],
-    "C": ["left"],
-    "D": ["right"]
+    "A = forward": ["forward"],
+    "B = backward": ["backward"],
+    "C = left": ["left"],
+    "D = right": ["right"]
 }
 
 # =========================
