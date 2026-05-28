@@ -38,7 +38,7 @@ lidar_sub.Init(lidar_range_handler, 10)
 print("Robot connection ready")
 
 # =========================
-# ROUTES
+# ROUTES (PŘIDÁN OBRAZOVÝ PŘÍKAZ DO MAPOVÁNÍ)
 # =========================
 ROUTES = {
     "A": "forward",
@@ -47,7 +47,8 @@ ROUTES = {
     "D": "right",
     "SPIN": "spin",
     "LIE": "lie",
-    "STAND": "stand"
+    "STAND": "stand",
+    "PICTURE": "picture"  # Přidáno pro sekvenční zpracování
 }
 
 # =========================
@@ -77,7 +78,7 @@ def take_picture():
         print("❌ Error:", e)
 
 # =========================
-# AGENT (PŘIDÁNA NÁPOVĚDA HELP)
+# AGENT
 # =========================
 def agent(user_input):
     parts = user_input.upper().strip().split()
@@ -85,12 +86,11 @@ def agent(user_input):
     if not parts:
         return []
 
-    # Pokud uživatel napsal HELP, vypíšeme nápovědu a neprovádíme žádný pohyb
     if "HELP" in parts:
         print("\n" + "="*50)
         print(" 📖 NÁPOVĚDA K OVLÁDÁNÍ ROBOTA")
         print("="*50)
-        print(" Příkazy můžeš řetězit za sebe (např: A5 C2 B3 LIE)")
+        print(" Příkazy můžeš řetězit za sebe (např: A5 C2 PICTURE B3 LIE)")
         print("-"*50)
         print(" 🏃 POHYBY (lze přidat čas v sekundách, např. A5 nebo C2.5):")
         print("   A [sekundy]    - Pohyb VPŘED (výchozí 3.0s)")
@@ -101,7 +101,7 @@ def agent(user_input):
         print("\n 🤖 POLOHY A SPECIÁLNÍ AKCE:")
         print("   STAND          - Robot se postaví")
         print("   LIE            - Robot si lehne")
-        print("   PICTURE        - Okamžité vyfocení snímku")
+        print("   PICTURE        - Vyfocení snímku (provede se v zadaném pořadí)")
         print("   STOP           - Okamžité zastavení motorů")
         print("   HELP           - Zobrazí tuto nápovědu")
         print("="*50 + "\n")
@@ -113,9 +113,7 @@ def agent(user_input):
     route = []
 
     for part in parts:
-        if part == "PICTURE":
-            take_picture()
-            continue
+        # ODSTRANĚNO: Okamžité focení uvnitř agenta
 
         match = re.match(r"^([A-Z]+)(\d+(?:\.\d+)?)?$", part)
         
@@ -146,7 +144,7 @@ def move(vx, vy, vyaw, duration):
     client.StopMove()
 
 # =========================
-# MOVES (S NÁVRATOVOU HODNOTOU PRO BEZPEČNOST)
+# MOVES
 # =========================
 def forward(seconds=3):
     print(f"[ROBOT] FORWARD ({seconds}s)")
@@ -162,7 +160,7 @@ def forward(seconds=3):
             print(f"🛑 Obstacle: {dist:.2f} m")
             client.StopMove()
             take_picture()
-            return False  # Detekována překážka -> selhání
+            return False
 
         client.Move(0.6, 0.0, 0.0)
         time.sleep(0.02)
@@ -224,7 +222,7 @@ def stop():
     client.StopMove()
 
 # =========================
-# EXECUTOR (S HLÍDÁNÍM PŘERUŠENÍ CELÉ TRASY)
+# EXECUTOR (UPRAVENO PRO SEKVENČNÍ FOCENÍ)
 # =========================
 def execute(route):
     if not route:
@@ -259,10 +257,11 @@ def execute(route):
             lie()
         elif step == "stand":
             stand()
+        elif step == "picture":  # Focení se spustí až v tomto kroku trasy
+            take_picture()
         elif step == "stop":
             stop()
 
-        # Pokud jakýkoliv pohyb selže (narazí na překážku), zbytek cesty zrušíme
         if not success:
             print("⚠️ [EXECUTOR] Route ABORTED due to obstacle! Remaining commands canceled.")
             break
@@ -297,7 +296,7 @@ def main():
     warmup()
 
     print("Připraveno.")
-    print("Pro výpis všech příkazů napiště HELP.")
+    print("Pro výpis všech příkazů napište HELP.")
 
     while True:
         user_input = input("> ")
