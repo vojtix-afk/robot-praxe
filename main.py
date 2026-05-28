@@ -2,6 +2,7 @@ import time
 import cv2
 import numpy as np
 import threading
+import re  # Přidán import pro regulární výrazy
 
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize, ChannelSubscriber
 from unitree_sdk2py.go2.sport.sport_client import SportClient
@@ -37,16 +38,16 @@ lidar_sub.Init(lidar_range_handler, 10)
 print("Robot connection ready")
 
 # =========================
-# ROUTES
+# ROUTES (Zjednodušeno na mapování 1:1)
 # =========================
 ROUTES = {
-    "A": ["forward"],
-    "B": ["backward"],
-    "C": ["left"],
-    "D": ["right"],
-    "SPIN": ["spin"],
-    "LIE": ["lie"],
-    "STAND": ["stand"]
+    "A": "forward",
+    "B": "backward",
+    "C": "left",
+    "D": "right",
+    "SPIN": "spin",
+    "LIE": "lie",
+    "STAND": "stand"
 }
 
 # =========================
@@ -76,7 +77,7 @@ def take_picture():
         print("❌ Error:", e)
 
 # =========================
-# AGENT
+# AGENT (UPRAVENO PRO PARSOVÁNÍ ČÍSEL)
 # =========================
 def agent(user_input):
     parts = user_input.upper().strip().split()
@@ -85,7 +86,7 @@ def agent(user_input):
         return []
 
     if "STOP" in parts:
-        return ["stop"]
+        return [("stop", None)]
 
     route = []
 
@@ -94,10 +95,21 @@ def agent(user_input):
             take_picture()
             continue
 
-        if part in ROUTES:
-            route.extend(ROUTES[part])
+        # Regulární výraz: hledá písmena na začátku a volitelná čísla (i desetinná) na konci
+        match = re.match(r"^([A-Z]+)(\d+(?:\.\d+)?)?$", part)
+        
+        if match:
+            cmd_letter = match.group(1)   # Např. "A" nebo "SPIN"
+            duration_str = match.group(2) # Např. "5" nebo "2.5" nebo None
+            
+            if cmd_letter in ROUTES:
+                # Pokud číslo zadáno není, předáme None (použije se výchozí čas funkce)
+                duration = float(duration_str) if duration_str else None
+                route.append((ROUTES[cmd_letter], duration))
+            else:
+                print("[AGENT] Unknown command:", cmd_letter)
         else:
-            print("[AGENT] Unknown:", part)
+            print("[AGENT] Invalid format:", part)
 
     return route
 
@@ -114,10 +126,10 @@ def move(vx, vy, vyaw, duration):
     client.StopMove()
 
 # =========================
-# MOVES (BEZ ZMĚN SEKUND)
+# MOVES (ZŮSTÁVAJÍ VÝCHOZÍ ČASY)
 # =========================
 def forward(seconds=3):
-    print("[ROBOT] FORWARD")
+    print(f"[ROBOT] FORWARD ({seconds}s)")
 
     t0 = time.time()
 
@@ -126,7 +138,7 @@ def forward(seconds=3):
         with lock:
             dist = obstacle_distance_front
 
-        if 0.05 < dist <= 0.70:
+        if 0.05 < dist <= 0.50:
             print(f"🛑 Obstacle: {dist:.2f} m")
             take_picture()
             break
@@ -138,26 +150,26 @@ def forward(seconds=3):
 
 
 def backward(seconds=3):
-    print("[ROBOT] BACKWARD")
+    print(f"[ROBOT] BACKWARD ({seconds}s)")
     move(-0.6, 0.0, 0.0, seconds)
 
 
 def left(seconds=3.5):
-    print("[ROBOT] LEFT")
+    print(f"[ROBOT] LEFT ({seconds}s)")
     move(0.0, 0.0, 0.6, seconds)
 
 
 def right(seconds=3.5):
-    print("[ROBOT] RIGHT")
+    print(f"[ROBOT] RIGHT ({seconds}s)")
     move(0.0, 0.0, -0.6, seconds)
 
 
 def spin(seconds=7.5):
-    print("[ROBOT] SPIN")
+    print(f"[ROBOT] SPIN ({seconds}s)")
     move(0.0, 0.0, 1, seconds)
 
 # =========================
-# POSTURES (NEW)
+# POSTURES
 # =========================
 def lie():
     print("[ROBOT] LIE DOWN")
@@ -186,28 +198,33 @@ def stop():
     client.StopMove()
 
 # =========================
-# EXECUTOR
+# EXECUTOR (UPRAVENO PRO PŘIJÍMÁNÍ ČASU)
 # =========================
 def execute(route):
     print("[EXECUTOR] Starting route")
 
-    for step in route:
+    for step, duration in route:
 
         client.Move(0.0, 0.0, 0.0)
         time.sleep(0.05)
         client.StopMove()
         time.sleep(0.05)
 
+        # Příprava argumentů pro funkci - pokud trvání existuje, pošleme ho dál
+        kwargs = {}
+        if duration is not None:
+            kwargs['seconds'] = duration
+
         if step == "forward":
-            forward()
+            forward(**kwargs)
         elif step == "backward":
-            backward()
+            backward(**kwargs)
         elif step == "left":
-            left()
+            left(**kwargs)
         elif step == "right":
-            right()
+            right(**kwargs)
         elif step == "spin":
-            spin()
+            spin(**kwargs)
         elif step == "lie":
             lie()
         elif step == "stand":
@@ -251,7 +268,7 @@ def main():
 
         route = agent(user_input)
 
-        print("[MAIN] Route:", route)
+        print("[MAIN] Route parsing completed:", route)
         execute(route)
 
         print("\n--- DONE ---\n")
