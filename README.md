@@ -55,7 +55,7 @@ Pokud detekuje překážku:
 # Spuštění
 
 ```bash id="rd2"
-python3 main.py
+python3 main.py eth0
 ```
 
 Po spuštění programu lze zadat příkaz:
