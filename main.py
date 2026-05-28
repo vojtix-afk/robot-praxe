@@ -154,12 +154,12 @@ def backward(seconds=3):
     move(-0.6, 0.0, 0.0, seconds)
 
 
-def left(seconds=3.5):
+def left(seconds=3.6):
     print(f"[ROBOT] LEFT ({seconds}s)")
     move(0.0, 0.0, 0.6, seconds)
 
 
-def right(seconds=3.5):
+def right(seconds=3.3):
     print(f"[ROBOT] RIGHT ({seconds}s)")
     move(0.0, 0.0, -0.6, seconds)
 
