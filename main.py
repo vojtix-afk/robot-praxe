@@ -2,7 +2,7 @@ import time
 import cv2
 import numpy as np
 import threading
-import re  # Přidán import pro regulární výrazy
+import re
 
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize, ChannelSubscriber
 from unitree_sdk2py.go2.sport.sport_client import SportClient
@@ -38,7 +38,7 @@ lidar_sub.Init(lidar_range_handler, 10)
 print("Robot connection ready")
 
 # =========================
-# ROUTES (Zjednodušeno na mapování 1:1)
+# ROUTES
 # =========================
 ROUTES = {
     "A": "forward",
@@ -77,12 +77,34 @@ def take_picture():
         print("❌ Error:", e)
 
 # =========================
-# AGENT (UPRAVENO PRO PARSOVÁNÍ ČÍSEL)
+# AGENT (PŘIDÁNA NÁPOVĚDA HELP)
 # =========================
 def agent(user_input):
     parts = user_input.upper().strip().split()
 
     if not parts:
+        return []
+
+    # Pokud uživatel napsal HELP, vypíšeme nápovědu a neprovádíme žádný pohyb
+    if "HELP" in parts:
+        print("\n" + "="*50)
+        print(" 📖 NÁPOVĚDA K OVLÁDÁNÍ ROBOTA")
+        print("="*50)
+        print(" Příkazy můžeš řetězit za sebe (např: A5 C2 B3 LIE)")
+        print("-"*50)
+        print(" 🏃 POHYBY (lze přidat čas v sekundách, např. A5 nebo C2.5):")
+        print("   A [sekundy]    - Pohyb VPŘED (výchozí 3.0s)")
+        print("   B [sekundy]    - Pohyb VZAD (výchozí 3.0s)")
+        print("   C [sekundy]    - Krok VLEVO (výchozí 3.6s)")
+        print("   D [sekundy]    - Krok VPRAVO (výchozí 3.3s)")
+        print("   SPIN [sekundy] - Otočení na místě (výchozí 7.5s)")
+        print("\n 🤖 POLOHY A SPECIÁLNÍ AKCE:")
+        print("   STAND          - Robot se postaví")
+        print("   LIE            - Robot si lehne")
+        print("   PICTURE        - Okamžité vyfocení snímku")
+        print("   STOP           - Okamžité zastavení motorů")
+        print("   HELP           - Zobrazí tuto nápovědu")
+        print("="*50 + "\n")
         return []
 
     if "STOP" in parts:
@@ -95,15 +117,13 @@ def agent(user_input):
             take_picture()
             continue
 
-        # Regulární výraz: hledá písmena na začátku a volitelná čísla (i desetinná) na konci
         match = re.match(r"^([A-Z]+)(\d+(?:\.\d+)?)?$", part)
         
         if match:
-            cmd_letter = match.group(1)   # Např. "A" nebo "SPIN"
-            duration_str = match.group(2) # Např. "5" nebo "2.5" nebo None
+            cmd_letter = match.group(1)
+            duration_str = match.group(2)
             
             if cmd_letter in ROUTES:
-                # Pokud číslo zadáno není, předáme None (použije se výchozí čas funkce)
                 duration = float(duration_str) if duration_str else None
                 route.append((ROUTES[cmd_letter], duration))
             else:
@@ -114,7 +134,7 @@ def agent(user_input):
     return route
 
 # =========================
-# SAFE MOVE CORE (BEZ ZMĚN)
+# SAFE MOVE CORE
 # =========================
 def move(vx, vy, vyaw, duration):
     t0 = time.time()
@@ -126,7 +146,7 @@ def move(vx, vy, vyaw, duration):
     client.StopMove()
 
 # =========================
-# MOVES (ZŮSTÁVAJÍ VÝCHOZÍ ČASY)
+# MOVES (S NÁVRATOVOU HODNOTOU PRO BEZPEČNOST)
 # =========================
 def forward(seconds=3):
     print(f"[ROBOT] FORWARD ({seconds}s)")
@@ -140,33 +160,39 @@ def forward(seconds=3):
 
         if 0.05 < dist <= 0.50:
             print(f"🛑 Obstacle: {dist:.2f} m")
+            client.StopMove()
             take_picture()
-            break
+            return False  # Detekována překážka -> selhání
 
         client.Move(0.6, 0.0, 0.0)
         time.sleep(0.02)
 
     client.StopMove()
+    return True
 
 
 def backward(seconds=3):
     print(f"[ROBOT] BACKWARD ({seconds}s)")
     move(-0.6, 0.0, 0.0, seconds)
+    return True
 
 
 def left(seconds=3.6):
     print(f"[ROBOT] LEFT ({seconds}s)")
     move(0.0, 0.0, 0.6, seconds)
+    return True
 
 
 def right(seconds=3.3):
     print(f"[ROBOT] RIGHT ({seconds}s)")
     move(0.0, 0.0, -0.6, seconds)
+    return True
 
 
 def spin(seconds=7.5):
     print(f"[ROBOT] SPIN ({seconds}s)")
     move(0.0, 0.0, 1, seconds)
+    return True
 
 # =========================
 # POSTURES
@@ -198,9 +224,12 @@ def stop():
     client.StopMove()
 
 # =========================
-# EXECUTOR (UPRAVENO PRO PŘIJÍMÁNÍ ČASU)
+# EXECUTOR (S HLÍDÁNÍM PŘERUŠENÍ CELÉ TRASY)
 # =========================
 def execute(route):
+    if not route:
+        return
+
     print("[EXECUTOR] Starting route")
 
     for step, duration in route:
@@ -210,21 +239,22 @@ def execute(route):
         client.StopMove()
         time.sleep(0.05)
 
-        # Příprava argumentů pro funkci - pokud trvání existuje, pošleme ho dál
         kwargs = {}
         if duration is not None:
             kwargs['seconds'] = duration
 
+        success = True
+
         if step == "forward":
-            forward(**kwargs)
+            success = forward(**kwargs)
         elif step == "backward":
-            backward(**kwargs)
+            success = backward(**kwargs)
         elif step == "left":
-            left(**kwargs)
+            success = left(**kwargs)
         elif step == "right":
-            right(**kwargs)
+            success = right(**kwargs)
         elif step == "spin":
-            spin(**kwargs)
+            success = spin(**kwargs)
         elif step == "lie":
             lie()
         elif step == "stand":
@@ -232,12 +262,17 @@ def execute(route):
         elif step == "stop":
             stop()
 
+        # Pokud jakýkoliv pohyb selže (narazí na překážku), zbytek cesty zrušíme
+        if not success:
+            print("⚠️ [EXECUTOR] Route ABORTED due to obstacle! Remaining commands canceled.")
+            break
+
         time.sleep(0.2)
 
-    print("[EXECUTOR] Route complete")
+    print("[EXECUTOR] Route process finished")
 
 # =========================
-# WARMUP (BEZ ZMĚN)
+# WARMUP
 # =========================
 def warmup():
     print("Warming up control channel...")
@@ -261,17 +296,18 @@ def main():
 
     warmup()
 
-    print("Ready.")
+    print("Připraveno.")
+    print("Pro výpis všech příkazů napiště HELP.")
 
     while True:
         user_input = input("> ")
 
         route = agent(user_input)
 
-        print("[MAIN] Route parsing completed:", route)
-        execute(route)
-
-        print("\n--- DONE ---\n")
+        if route:
+            print("[MAIN] Route:", route)
+            execute(route)
+            print("\n--- DONE ---\n")
 
 
 if __name__ == "__main__":
