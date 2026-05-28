@@ -101,7 +101,7 @@ def agent(user_input):
         print("\n 🤖 POLOHY A SPECIÁLNÍ AKCE:")
         print("   STAND          - Robot se postaví")
         print("   LIE            - Robot si lehne")
-        print("   PICTURE        - Vyfocení snímku (provede se v zadaném pořadí)")
+        print("   PICTURE        - Vyfocení snímku")
         print("   STOP           - Okamžité zastavení motorů")
         print("   HELP           - Zobrazí tuto nápovědu")
         print("="*50 + "\n")
