@@ -9,7 +9,7 @@ from unitree_sdk2py.go2.sport.sport_client import SportClient
 from unitree_sdk2py.go2.video.video_client import VideoClient
 from unitree_sdk2py.idl.geometry_msgs.msg.dds_ import PointStamped_
 
-print("Initializing robot connection...")
+print("Inicializace připojení k robotovi...")
 
 ChannelFactoryInitialize(0, "eth0")
 
@@ -22,7 +22,7 @@ video_client.SetTimeout(1.0)
 video_client.Init()
 
 # =========================
-# LIDAR (thread-safe)
+# LIDAR (vláknově bezpečný)
 # =========================
 lock = threading.Lock()
 obstacle_distance_front = float('inf')
@@ -35,7 +35,7 @@ def lidar_range_handler(msg: PointStamped_):
 lidar_sub = ChannelSubscriber("rt/utlidar/range_info", PointStamped_)
 lidar_sub.Init(lidar_range_handler, 10)
 
-print("Robot connection ready")
+print("Připojení k robotovi je připraveno")
 
 # =========================
 # ROUTES (PŘIDÁN OBRAZOVÝ PŘÍKAZ DO MAPOVÁNÍ)
@@ -52,15 +52,15 @@ ROUTES = {
 }
 
 # =========================
-# CAMERA
+# KAMERA
 # =========================
 def take_picture():
-    print("[CAMERA] Taking picture...")
+    print("[KAMERA] Pořizování snímku...")
 
     code, data = video_client.GetImageSample()
 
     if code != 0 or not data:
-        print("❌ Camera error")
+        print("❌ Chyba kamery")
         return
 
     try:
@@ -68,14 +68,14 @@ def take_picture():
         img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
 
         if img is None:
-            print("❌ Decode failed")
+            print("❌ Dekódování selhalo")
             return
 
         cv2.imwrite("image.jpg", img)
-        print("✅ Saved image.jpg")
+        print("✅ Snímek uložen jako image.jpg")
 
     except Exception as e:
-        print("❌ Error:", e)
+        print("❌ Chyba:", e)
 
 # =========================
 # AGENT
@@ -125,14 +125,14 @@ def agent(user_input):
                 duration = float(duration_str) if duration_str else None
                 route.append((ROUTES[cmd_letter], duration))
             else:
-                print("[AGENT] Unknown command:", cmd_letter)
+                print("[AGENT] Neznámý příkaz:", cmd_letter)
         else:
-            print("[AGENT] Invalid format:", part)
+            print("[AGENT] Neplatný formát:", part)
 
     return route
 
 # =========================
-# SAFE MOVE CORE
+# BEZPEČNÝ POHYB (JÁDRO)
 # =========================
 def move(vx, vy, vyaw, duration):
     t0 = time.time()
@@ -144,10 +144,10 @@ def move(vx, vy, vyaw, duration):
     client.StopMove()
 
 # =========================
-# MOVES
+# POHYBY
 # =========================
 def forward(seconds=3):
-    print(f"[ROBOT] FORWARD ({seconds}s)")
+    print(f"[ROBOT] VPŘED ({seconds}s)")
 
     t0 = time.time()
 
@@ -157,7 +157,7 @@ def forward(seconds=3):
             dist = obstacle_distance_front
 
         if 0.05 < dist <= 0.50:
-            print(f"🛑 Obstacle: {dist:.2f} m")
+            print(f"🛑 Překážka: {dist:.2f} m")
             client.StopMove()
             take_picture()
             return False
@@ -170,65 +170,65 @@ def forward(seconds=3):
 
 
 def backward(seconds=3):
-    print(f"[ROBOT] BACKWARD ({seconds}s)")
+    print(f"[ROBOT] VZAD ({seconds}s)")
     move(-0.6, 0.0, 0.0, seconds)
     return True
 
 
 def left(seconds=3.6):
-    print(f"[ROBOT] LEFT ({seconds}s)")
+    print(f"[ROBOT] VLEVO ({seconds}s)")
     move(0.0, 0.0, 0.6, seconds)
     return True
 
 
 def right(seconds=3.3):
-    print(f"[ROBOT] RIGHT ({seconds}s)")
+    print(f"[ROBOT] VPRAVO ({seconds}s)")
     move(0.0, 0.0, -0.6, seconds)
     return True
 
 
 def spin(seconds=7.5):
-    print(f"[ROBOT] SPIN ({seconds}s)")
+    print(f"[ROBOT] OTOČENÍ ({seconds}s)")
     move(0.0, 0.0, 1, seconds)
     return True
 
 # =========================
-# POSTURES
+# POLOHY
 # =========================
 def lie():
-    print("[ROBOT] LIE DOWN")
+    print("[ROBOT] LEHNOUT")
 
     try:
         client.StopMove()
         time.sleep(0.2)
         client.StandDown()
     except Exception as e:
-        print("❌ StandDown (lie) error:", e)
+        print("❌ Chyba při lehání (StandDown):", e)
 
 
 def stand():
-    print("[ROBOT] STAND")
+    print("[ROBOT] POSTAVIT SE")
 
     try:
         client.StandUp()
     except Exception as e:
-        print("❌ StandUp error:", e)
+        print("❌ Chyba při vstávání (StandUp):", e)
 
 # =========================
-# STOP
+# ZASTAVENÍ
 # =========================
 def stop():
-    print("[ROBOT] STOP")
+    print("[ROBOT] ZASTAVIT")
     client.StopMove()
 
 # =========================
-# EXECUTOR (UPRAVENO PRO SEKVENČNÍ FOCENÍ)
+# EXEKUTOR (UPRAVENO PRO SEKVENČNÍ FOCENÍ)
 # =========================
 def execute(route):
     if not route:
         return
 
-    print("[EXECUTOR] Starting route")
+    print("[EXEKUTOR] Spouštění trasy")
 
     for step, duration in route:
 
@@ -263,18 +263,18 @@ def execute(route):
             stop()
 
         if not success:
-            print("⚠️ [EXECUTOR] Route ABORTED due to obstacle! Remaining commands canceled.")
+            print("⚠️ Trasa PŘERUŠENA kvůli překážce! Zbývající příkazy zrušeny.")
             break
 
         time.sleep(0.2)
 
-    print("[EXECUTOR] Route process finished")
+    print("[EXEKUTOR] Zpracování trasy dokončeno")
 
 # =========================
-# WARMUP
+# ZAHŘÁTÍ
 # =========================
 def warmup():
-    print("Warming up control channel...")
+    print("Zahřívání řídicího kanálu...")
 
     for _ in range(5):
         client.Move(0.0, 0.0, 0.0)
@@ -284,12 +284,12 @@ def warmup():
     time.sleep(1)
 
 # =========================
-# MAIN
+# HLAVNÍ PROGRAM
 # =========================
 def main():
-    print("\nRobot Dog System Ready\n")
+    print("\nSystém robotického psa je připraven\n")
 
-    print("Standing up robot...")
+    print("Robot se staví...")
     client.StandUp()
     time.sleep(3)
 
@@ -304,9 +304,9 @@ def main():
         route = agent(user_input)
 
         if route:
-            print("[MAIN] Route:", route)
+            print("[HLAVNÍ] Trasa:", route)
             execute(route)
-            print("\n--- DONE ---\n")
+            print("\n--- HOTOVO ---\n")
 
 
 if __name__ == "__main__":
